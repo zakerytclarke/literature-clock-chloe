@@ -6,10 +6,12 @@
     <script>
         var current_date;
 
-        // Function to show error/debug messages in a popup
-        function showError(message) {
+        function showError(message, stack = null) {
             const errorBox = document.getElementById("error_box");
             errorBox.innerHTML += `<p>${message}</p>`;
+            if (stack) {
+                errorBox.innerHTML += `<pre>${stack}</pre>`;
+            }
             errorBox.style.display = "block";
         }
 
@@ -25,16 +27,14 @@
 
                 // Debug information
                 showError(`API Time: ${apiTime.toISOString()} | Local Time: ${localTime.toISOString()}`);
-
                 return apiTime;
             } catch (error) {
-                showError(`Error fetching current time: ${error.message}`);
+                showError(`Error fetching current time: ${error.message}`, error.stack);
                 return new Date(); // Fallback to local time
             }
         }
 
         async function init() {
-            // This code runs only at page load
             var queries = new URLSearchParams(window.location.search);
 
             if (queries.has('theme')) {
@@ -44,23 +44,19 @@
                 } else {
                     light_theme();
                 }
-            }
-            // Try to guess theme preference
-            else if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            } else if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
                 dark_theme();
             } else {
                 light_theme();
             }
 
-            // Check if sfw query parameter passed
             var sfw = queries.has('sfw') && ['yes', 'true', '1'].includes(queries.get('sfw').toLowerCase());
 
             if (sfw) {
                 try {
                     document.getElementById('sfw_toggle').innerHTML = '<a href="/">Include all quotes</a>';
                 } catch (e) {
-                    console.log(e);
-                    showError(`Error updating SFW toggle: ${e.message}`);
+                    showError(`Error updating SFW toggle: ${e.message}`, e.stack);
                 }
             }
 
@@ -78,18 +74,12 @@
                     }
                 })
                 .catch(e => {
-                    console.log("Error loading file", e);
-                    showError(`Error loading file: ${e.message}`);
+                    showError(`Error loading file: ${e.message}`, e.stack);
                 });
         }
 
         function updateText(time, sfw) {
-            // This runs every minute
-
-            // Load JSON file
             loadFile(time).then((lit_json) => {
-
-                // Filter SFW if needed
                 if (sfw) {
                     lit_json = lit_json.filter(item => item.sfw === 'yes');
                 }
@@ -98,16 +88,9 @@
                     return updateText(oneMinuteAgo(time), sfw);
                 }
 
-                // select single random text
-                var lit_json_single = lit_json[Math.floor(Math.random() * lit_json.length)]
+                var lit_json_single = lit_json[Math.floor(Math.random() * lit_json.length)];
+                var quote_len = (lit_json_single.quote_first + lit_json_single.quote_time_case + lit_json_single.quote_last).length;
 
-                // get quote_len
-                var quote_len = (lit_json_single.quote_first +
-                                 lit_json_single.quote_time_case +
-                                 lit_json_single.quote_last)
-                                 .length
-
-                // Write to HTML
                 try {
                     document.getElementById('lit_quote').innerHTML =
                         lit_json_single.quote_first + '<em>' +
@@ -116,20 +99,16 @@
                     document.getElementById('book').innerHTML = lit_json_single.title;
                     document.getElementById('author').innerHTML = lit_json_single.author;
 
-                    // set fontsize according to length
                     document.getElementById('lit_quote').style.fontSize =
-                    ((6.000864 - 0.01211676 * quote_len + 0.00001176814 * quote_len ** 2 - 1.969435e-9 * quote_len ** 3) + "vw");
+                        ((6.000864 - 0.01211676 * quote_len + 0.00001176814 * quote_len ** 2 - 1.969435e-9 * quote_len ** 3) + "vw");
 
                 } catch (e) {
-                    console.log(e);
-                    showError(`Error updating text: ${e.message}`);
+                    showError(`Error updating text: ${e.message}`, e.stack);
                 }
-
             });
         }
 
         async function startTime(sfw) {
-            // Fetch New York time
             const time = await fetchCurrentTime();
 
             if (current_date !== undefined && current_date.getMinutes() === time.getMinutes()) {
@@ -138,15 +117,13 @@
             }
 
             current_date = time;
-
             updateText(time, sfw);
 
-            // Timeout
             setTimeout(() => startTime(sfw), 1000);
         }
 
         function oneMinuteAgo(time) {
-            return new Date(time - 60000) // Subtract one minute
+            return new Date(time - 60000);
         }
 
         function timeToTimecode(time) {
@@ -154,11 +131,11 @@
             var m = time.getMinutes();
             h = checkTime(h);
             m = checkTime(m);
-            return h + "_" + m;  // fixed for windows compatibility
+            return h + "_" + m;
         }
 
         function checkTime(i) {
-            if (i < 10) { i = "0" + i };  // add zero in front of numbers < 10
+            if (i < 10) { i = "0" + i };
             return i;
         }
     </script>
