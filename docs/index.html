@@ -5,14 +5,14 @@
     <meta charset="utf-8"/>
     <script>
         var current_date;
+        var timeOffsetHours = -5; // Configure the offset in hours (e.g., -5 for 5 hours behind)
 
         function init() {
             // This code runs only at page load
             var queries = new URLSearchParams(window.location.search);
-            
 
             if (queries.has('theme')) {
-                var query_theme =  queries.get('theme').toLowerCase();
+                var query_theme = queries.get('theme').toLowerCase();
                 if (query_theme === 'dark') {
                     dark_theme();
                 } else {
@@ -79,7 +79,6 @@
                                  .length
 
                 // Write to HTML
-                //document.getElementById('time').innerHTML = timeCode;     // Show time
                 try {
                     document.getElementById('lit_quote').innerHTML =
                         lit_json_single.quote_first + '<em>' +
@@ -88,9 +87,7 @@
                     document.getElementById('book').innerHTML = lit_json_single.title;
                     document.getElementById('author').innerHTML = lit_json_single.author;
 
-                    // set fontsize according to length
-                    // Equation to make fontsize match
-                    // y = 6.190864 - 0.01211676*x + 0.00001176814*x^2 - 1.969435e-9*x^3, where x is quote_len
+                    // set font size according to length
                     document.getElementById('lit_quote').style.fontSize =
                     ((6.000864 - 0.01211676 * quote_len + 0.00001176814 * quote_len ** 2 - 1.969435e-9 * quote_len ** 3) + "vw");
 
@@ -102,45 +99,39 @@
         }
         function startTime(sfw) {
             // This code runs every second
-            // could be optimized to check time in miliseconds and set timeout to when minute will change next time.
-            
             var time = new Date();
+
+            // Adjust time by the configured offset
+            time.setHours(time.getHours() + timeOffsetHours);
+
             if (current_date !== undefined
                 && current_date.getMinutes() === time.getMinutes()) {
-                var t = setTimeout(startTime, 1000);
+                var t = setTimeout(() => startTime(sfw), 1000);
                 return;
             }
 
             current_date = time;
 
-            //Test longest (20:15)
-            //Test shortest (08:51)
-            //time = new Date('Tue Nov 16 2021 22:39:00'); // Test missing quote
-            //time = new Date('Tue Nov 16 2021 00:05:00'); // Test nsfw time
-
             updateText(time, sfw);
 
             // Timeout
-            var t = setTimeout(startTime, 1000);
+            var t = setTimeout(() => startTime(sfw), 1000);
         }
 
         function oneMinuteAgo(time) {
-            return new Date(time - 60000) // Subtract one minute
+            return new Date(time - 60000); // Subtract one minute
         }
 
         function timeToTimecode(time) {
             var h = time.getHours();
             var m = time.getMinutes();
-            // var s = time.getSeconds();
             h = checkTime(h);
             m = checkTime(m);
-            // s = checkTime(s);
-            return h + "_" + m;  // fixed for windows compatibility
-
+            return h + "_" + m; // Fixed for Windows compatibility
         }
 
         function checkTime(i) {
-            if (i < 10) { i = "0" + i };  // add zero in front of numbers < 10
+            if (i < 10) { i = "0" + i; }  // Add zero in front of numbers < 10
             return i;
         }
     </script>
@@ -153,8 +144,6 @@
 </head>
 
 <body onload="init()">
-
-    <!-- <div id="time"></div> -->
 
     <div id="main_text">
         <h2>Chloe's Literary Clock</h2>
@@ -183,7 +172,6 @@
             <a id="toggle-theme" onclick="toggle_theme()" href="#">Dark Theme</a>
         </span>
     </div>
-
 
 </body>
 
