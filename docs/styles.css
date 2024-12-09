@@ -6,12 +6,11 @@ html, body {
 }
 
 body {
-    transform: rotate(-90deg) translate(-100%, 0);
+    transform: rotate(90deg) translate(0, -100%);
     transform-origin: top left;
-    width: 100vh; /* Swap width and height */
+    width: 100vh;
     height: 100vw;
-    overflow: hidden; /* Prevent scrolling issues */
-    margin: 0; /* Ensure no extra spacing */
+    overflow: hidden;
 }
 
 
