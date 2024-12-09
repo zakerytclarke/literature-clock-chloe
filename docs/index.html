@@ -1,47 +1,183 @@
-<script>
-    var current_date; 
+<!DOCTYPE html>
+<html>
 
-    async function fetchCurrentTime() {
-        const response = await fetch('https://worldtimeapi.org/api/timezone/America/New_York');
-        if (!response.ok) {
-            console.error('Failed to fetch time from WorldTimeAPI');
-            return new Date(); // Fallback to the local time
+<head>
+    <meta charset="utf-8"/>
+    <script>
+        var current_date;
+
+        async function fetchCurrentTime() {
+            const response = await fetch('https://worldtimeapi.org/api/timezone/America/New_York');
+            if (!response.ok) {
+                console.error('Failed to fetch time from WorldTimeAPI');
+                return new Date(); // Fallback to the local time
+            }
+            const data = await response.json();
+            return new Date(data.datetime);
         }
-        const data = await response.json();
-        return new Date(data.datetime);
-    }
 
-    async function startTime(sfw) {
-        // Fetch New York time
-        const time = await fetchCurrentTime();
+        async function init() {
+            // This code runs only at page load
+            var queries = new URLSearchParams(window.location.search);
 
-        if (current_date !== undefined && current_date.getMinutes() === time.getMinutes()) {
-            // Skip updates if the minute hasn't changed
+            if (queries.has('theme')) {
+                var query_theme = queries.get('theme').toLowerCase();
+                if (query_theme === 'dark') {
+                    dark_theme();
+                } else {
+                    light_theme();
+                }
+            }
+            // Try to guess theme preference
+            else if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                dark_theme();
+            } else {
+                light_theme();
+            }
+
+            // Check if sfw query parameter passed
+            var sfw = queries.has('sfw') && ['yes', 'true', '1'].includes(queries.get('sfw').toLowerCase());
+
+            if (sfw) {
+                try {
+                    document.getElementById('sfw_toggle').innerHTML = '<a href="/">Include all quotes</a>';
+                } catch (e) {
+                    console.log(e);
+                }
+            }
+
+            startTime(sfw);
+        }
+
+        async function loadFile(time) {
+            var timeStamp = timeToTimecode(time);
+            return fetch("times/" + timeStamp + ".json")
+                .then(response => {
+                    if (response.ok) {
+                        return response.json();
+                    } else {
+                        return loadFile(oneMinuteAgo(time));
+                    }
+                })
+                .catch(e => console.log("error"));
+        }
+
+        function updateText(time, sfw) {
+            // This runs every minute
+
+            // Load JSON file
+            loadFile(time).then((lit_json) => {
+
+                // Filter SFW if needed
+                if (sfw) {
+                    lit_json = lit_json.filter(item => item.sfw === 'yes');
+                }
+
+                if (lit_json.length === 0) {
+                    return updateText(oneMinuteAgo(time), sfw);
+                }
+
+                // select single random text
+                var lit_json_single = lit_json[Math.floor(Math.random() * lit_json.length)]
+
+                // get quote_len
+                var quote_len = (lit_json_single.quote_first +
+                                 lit_json_single.quote_time_case +
+                                 lit_json_single.quote_last)
+                                 .length
+
+                // Write to HTML
+                try {
+                    document.getElementById('lit_quote').innerHTML =
+                        lit_json_single.quote_first + '<em>' +
+                        lit_json_single.quote_time_case + '</em>' +
+                        lit_json_single.quote_last;
+                    document.getElementById('book').innerHTML = lit_json_single.title;
+                    document.getElementById('author').innerHTML = lit_json_single.author;
+
+                    // set fontsize according to length
+                    document.getElementById('lit_quote').style.fontSize =
+                    ((6.000864 - 0.01211676 * quote_len + 0.00001176814 * quote_len ** 2 - 1.969435e-9 * quote_len ** 3) + "vw");
+
+                } catch (e) {
+                    console.log(e);
+                }
+
+            });
+        }
+
+        async function startTime(sfw) {
+            // Fetch New York time
+            const time = await fetchCurrentTime();
+
+            if (current_date !== undefined && current_date.getMinutes() === time.getMinutes()) {
+                // Skip updates if the minute hasn't changed
+                setTimeout(() => startTime(sfw), 30000);
+                return;
+            }
+
+            current_date = time; // Update current_date for new interval
+            updateText(time, sfw);
+
+            // Timeout for the next API call (30 seconds)
             setTimeout(() => startTime(sfw), 30000);
-            return;
         }
 
-        current_date = time; // Update current_date for new interval
-        updateText(time, sfw);
+        function oneMinuteAgo(time) {
+            return new Date(time - 60000); // Subtract one minute
+        }
 
-        // Timeout for the next API call (30 seconds)
-        setTimeout(() => startTime(sfw), 30000);
-    }
+        function timeToTimecode(time) {
+            var h = time.getHours();
+            var m = time.getMinutes();
+            h = checkTime(h);
+            m = checkTime(m);
+            return h + "_" + m;  // fixed for windows compatibility
+        }
 
-    function oneMinuteAgo(time) {
-        return new Date(time - 60000); // Subtract one minute
-    }
+        function checkTime(i) {
+            if (i < 10) { i = "0" + i };  // add zero in front of numbers < 10
+            return i;
+        }
+    </script>
+    <link rel="stylesheet" href="styles.css">
+    <link href='https://fonts.googleapis.com/css?family=Merriweather' rel='stylesheet'>
+    <script src="theme.js"></script>
 
-    function timeToTimecode(time) {
-        var h = time.getHours();
-        var m = time.getMinutes();
-        h = checkTime(h);
-        m = checkTime(m);
-        return h + "_" + m;  // fixed for windows compatibility
-    }
+    <title>Literature Clock</title>
 
-    function checkTime(i) {
-        if (i < 10) { i = "0" + i };  // add zero in front of numbers < 10
-        return i;
-    }
-</script>
+</head>
+
+<body onload="init()">
+
+    <div id="main_text">
+        <h2>Chloe's Literary Clock</h2>
+        <blockquote id="lit_quote"></blockquote>
+        <cite>
+            -
+            <span id="book"></span>,
+            <span id="author"></span>
+        </cite>
+    </div>
+
+    <div id="bottom">
+        <div id="github">
+            Made with Love <3
+        </div>
+        <span id="based_on">
+            For Chloe
+        </span>
+        <span id="twitter">
+            By Zak
+        </span>
+        <span id="sfw_toggle">
+            <a href="/?sfw=yes">Skip quotes marked NSFW</a>
+        </span>
+        <span>
+            <a id="toggle-theme" onclick="toggle_theme()" href="#">Dark Theme</a>
+        </span>
+    </div>
+
+</body>
+
+</html>
