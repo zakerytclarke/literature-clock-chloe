@@ -6,12 +6,14 @@ html, body {
 }
 
 body {
-    transform: rotate(90deg) translate(0, -100%);
+    transform: rotate(-90deg) translate(-100%, 0);
     transform-origin: top left;
-    width: 100vh;
+    width: 100vh; /* Swap width and height */
     height: 100vw;
-    overflow: hidden;
+    overflow: hidden; /* Prevent scrolling issues */
+    margin: 0; /* Ensure no extra spacing */
 }
+
 
 /*
 #lit_quote {
